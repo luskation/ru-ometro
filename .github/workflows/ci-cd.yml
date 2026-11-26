@@ -137,6 +137,8 @@ jobs:
 
       - name: Install Nomad
         run: |
+          # Unzip outside the repo: the checkout already has a "nomad/" folder
+          cd "$RUNNER_TEMP"
           curl -sfLo nomad.zip "https://releases.hashicorp.com/nomad/${NOMAD_VERSION}/nomad_${NOMAD_VERSION}_linux_amd64.zip"
           unzip -q nomad.zip
           sudo mv nomad /usr/local/bin/
@@ -173,7 +175,12 @@ jobs:
       - name: Debug on failure
         if: failure()
         run: |
-          nomad job status ru-ometro || true
+          set +e
+          nomad job status ru-ometro
           ALLOC=$(nomad job allocs -t '{{range .}}{{.ID}}{{end}}' ru-ometro 2>/dev/null | head -c 36)
-          [ -n "$ALLOC" ] && nomad alloc status "$ALLOC" && nomad alloc logs -stderr "$ALLOC" api
+          if [ -n "$ALLOC" ]; then
+            nomad alloc status "$ALLOC"
+            nomad alloc logs -stderr "$ALLOC" api
+          fi
           tail -50 nomad.log
+          exit 0
