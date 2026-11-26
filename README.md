@@ -11,7 +11,7 @@ API para avaliar as refeições do RU (bandejão). Trabalho final da disciplina 
 
 ## Vídeo de apresentação
 
-🎥 [Assista ao vídeo (Google Drive)](https://drive.google.com/drive/folders/1-LxQW2g6X4yjktPSj6VCtBeIetVJGrOL?usp=drive_link): o pipeline rodando e o deploy em Kubernetes e Nomad.
+🎥 [Assista ao vídeo (Google Drive)](https://drive.google.com/file/d/1LI5_Y_sNk-C10p6_ecK-tKTPPIEOWbhr/view?usp=drive_link): o pipeline rodando e o deploy em Kubernetes e Nomad.
 
 ## Endpoints
 
