@@ -9,6 +9,10 @@ API para avaliar as refeições do RU (bandejão). Trabalho final da disciplina 
 - **CI/CD:** GitHub Actions → imagem no GHCR → deploy em kind (K8s) e Nomad efêmeros
 - **Documentação interativa:** `/docs` (Swagger)
 
+## Vídeo de apresentação
+
+🎥 [Assista ao vídeo (Google Drive)](https://drive.google.com/drive/folders/1-LxQW2g6X4yjktPSj6VCtBeIetVJGrOL?usp=drive_link): o pipeline rodando e o deploy em Kubernetes e Nomad.
+
 ## Endpoints
 
 | Método | Rota | Descrição |
