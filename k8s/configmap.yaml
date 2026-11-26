@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ru-ometro-config
+  labels:
+    app.kubernetes.io/name: ru-ometro
+data:
+  APP_NAME: "RU-ometro"
+  SEED_DATA: "true"
+  LOG_LEVEL: "info"
