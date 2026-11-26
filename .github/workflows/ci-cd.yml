@@ -124,3 +124,56 @@ jobs:
         run: |
           kubectl -n ru-ometro describe deploy,pods
           kubectl -n ru-ometro logs -l app.kubernetes.io/name=ru-ometro --tail=100
+
+  deploy-nomad:
+    name: Deploy to Nomad (dev agent)
+    needs: build   # runs in parallel with deploy-k8s
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ${{ needs.build.outputs.image }}
+      NOMAD_VERSION: "1.9.3"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nomad
+        run: |
+          curl -sfLo nomad.zip "https://releases.hashicorp.com/nomad/${NOMAD_VERSION}/nomad_${NOMAD_VERSION}_linux_amd64.zip"
+          unzip -q nomad.zip
+          sudo mv nomad /usr/local/bin/
+          nomad version
+
+      - name: Start ephemeral Nomad agent (dev mode)
+        run: |
+          sudo nomad agent -dev -bind 0.0.0.0 > nomad.log 2>&1 &
+          for i in $(seq 1 30); do
+            if nomad node status 2>/dev/null | grep -q ready; then break; fi
+            echo "Aguardando o Nomad ($i)..."; sleep 2
+          done
+          nomad node status
+
+      - name: Validate job
+        run: nomad job validate -var "image=$IMAGE" nomad/ru-ometro.nomad.hcl
+
+      - name: Run job (waits for healthy deployment)
+        run: nomad job run -var "image=$IMAGE" nomad/ru-ometro.nomad.hcl
+
+      - name: Smoke test (/health + version)
+        run: |
+          for i in $(seq 1 10); do
+            if RESPONSE=$(curl -sf http://localhost:8080/health); then break; fi
+            echo "Tentativa $i falhou, aguardando..."; sleep 3
+          done
+          echo "Resposta: $RESPONSE"
+          echo "$RESPONSE" | jq -e --arg sha "$GITHUB_SHA" '.status == "ok" and .version == $sha'
+          echo "Deploy no Nomad OK: versão no ar = $GITHUB_SHA"
+
+      - name: Show job status
+        run: nomad job status ru-ometro
+
+      - name: Debug on failure
+        if: failure()
+        run: |
+          nomad job status ru-ometro || true
+          ALLOC=$(nomad job allocs -t '{{range .}}{{.ID}}{{end}}' ru-ometro 2>/dev/null | head -c 36)
+          [ -n "$ALLOC" ] && nomad alloc status "$ALLOC" && nomad alloc logs -stderr "$ALLOC" api
+          tail -50 nomad.log
