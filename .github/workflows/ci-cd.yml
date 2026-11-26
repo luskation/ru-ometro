@@ -78,3 +78,49 @@ jobs:
 
       - name: Show image
         run: echo "Imagem publicada -> ${{ steps.vars.outputs.image }}"
+
+  deploy-k8s:
+    name: Deploy to Kubernetes (kind)
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ${{ needs.build.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create ephemeral kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: ru-ometro
+
+      - name: Set image tag (kustomize)
+        run: |
+          cd k8s
+          kustomize edit set image ru-ometro="$IMAGE"
+          cat kustomization.yaml
+
+      - name: Apply manifests
+        run: kubectl apply -k k8s/
+
+      - name: Wait for rollout
+        run: kubectl -n ru-ometro rollout status deploy/ru-ometro --timeout=120s
+
+      - name: Smoke test (/health + version)
+        run: |
+          kubectl -n ru-ometro port-forward svc/ru-ometro 8080:80 &
+          for i in $(seq 1 10); do
+            if RESPONSE=$(curl -sf http://localhost:8080/health); then break; fi
+            echo "Tentativa $i falhou, aguardando..."; sleep 3
+          done
+          echo "Resposta: $RESPONSE"
+          echo "$RESPONSE" | jq -e --arg sha "$GITHUB_SHA" '.status == "ok" and .version == $sha'
+          echo "Deploy no K8s OK: versão no ar = $GITHUB_SHA"
+
+      - name: Show resources
+        run: kubectl -n ru-ometro get all
+
+      - name: Debug on failure
+        if: failure()
+        run: |
+          kubectl -n ru-ometro describe deploy,pods
+          kubectl -n ru-ometro logs -l app.kubernetes.io/name=ru-ometro --tail=100
