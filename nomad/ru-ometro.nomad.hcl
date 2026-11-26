@@ -30,6 +30,13 @@ job "ru-ometro" {
         path     = "/health"
         interval = "10s"
         timeout  = "2s"
+
+        # Equivalent to the K8s liveness probe: restart the task
+        # after 3 consecutive failed checks
+        check_restart {
+          limit = 3
+          grace = "10s"
+        }
       }
     }
 
